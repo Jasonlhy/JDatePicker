@@ -497,7 +497,7 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
 
         private Component getFullMonthLabel() {
 			if (fullMonthLabel == null){
-				fullMonthLabel = new JLabel("全月");
+				fullMonthLabel = new JLabel("This Month");
 				// fullMonthLabel = new JLabel("全月");
 				fullMonthLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 				fullMonthLabel.setOpaque(true);
