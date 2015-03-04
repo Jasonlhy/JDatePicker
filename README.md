@@ -37,6 +37,10 @@ What is the difference between this fork version and the originl JDatePicker?
 ------------
 The original JDatePicker is great for selecting a specific date. But I need to select a date or a month in the same view, therefore I changed some of the classes structures to fullfill my requirement. Also, I added another center month panel to select just the month by name.
 
+![SelectFullMonth](https://raw.githubusercontent.com/Jasonlhy/JDatePicker/master/site/jdatepicker_selectfullmonth.jpg)
+
+![SelectMonthName](https://raw.githubusercontent.com/Jasonlhy/JDatePicker/master/site/jdatepicker_selectmonthbyname.jpg)
+
 User reviews
 ------------
 
