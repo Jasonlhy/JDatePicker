@@ -27,7 +27,7 @@ public class TestIssueXX {
         picker.getModel().setMonth(1);
         //picker.getModel().setMonth(1);
         picker.getModel().setDay(15);
-        picker.getModel().setSelected(true);
+        picker.getModel().setSelectedDay(true);
 
         JPanel datePanel = new JPanel();
         datePanel.setLayout(new BorderLayout());

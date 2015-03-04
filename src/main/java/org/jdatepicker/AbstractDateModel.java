@@ -39,8 +39,10 @@ import javax.swing.event.ChangeListener;
 /**
  * Created 18 April 2010
  * Updated 26 April 2010
+ * Updated 4 March 2015
  * 
  * @author Juan Heyns
+ * @author Jasonlhy
  *
  * @param <T> The type of this model (e.g. java.util.Date, java.util.Calendar)
  */
@@ -49,9 +51,12 @@ public abstract class AbstractDateModel<T> implements DateModel<T> {
     public static final String PROPERTY_MONTH = "month";
     public static final String PROPERTY_DAY = "day";
     public static final String PROPERTY_VALUE = "value";
-    public static final String PROPERTY_SELECTED = "selected";
+    public static final String PROPERTY_SELECTED_DAY = "selected_day";
+    public static final String PROPERTY_SELECTED_MONTH = "selected_month";
 
-    private boolean selected;
+    // private boolean selected;
+    private boolean selectedDay;
+    private boolean selectedMonth;
     private Calendar calendarValue;
     private Set<ChangeListener> changeListeners;
     private Set<PropertyChangeListener> propertyChangeListeners;
@@ -59,7 +64,7 @@ public abstract class AbstractDateModel<T> implements DateModel<T> {
     protected AbstractDateModel() {
         changeListeners = new HashSet<ChangeListener>();    
         propertyChangeListeners = new HashSet<PropertyChangeListener>();
-        selected = false;
+        selectedDay = false;
         calendarValue = Calendar.getInstance();
     }
     
@@ -108,7 +113,7 @@ public abstract class AbstractDateModel<T> implements DateModel<T> {
     }
     
     public T getValue() {
-        if (!selected) {
+        if (!isSelected()) {
             return null;
         }
         return fromCalendar(calendarValue);
@@ -178,10 +183,10 @@ public abstract class AbstractDateModel<T> implements DateModel<T> {
         if (value != null) {
             this.calendarValue = toCalendar(value);
             setToMidnight();
-            selected = true;
+            selectedDay = true;
         }
         else {
-            selected = false;
+            selectedDay = false;
         }
         
         fireChangeEvent();
@@ -189,7 +194,7 @@ public abstract class AbstractDateModel<T> implements DateModel<T> {
         firePropertyChange(PROPERTY_MONTH, oldMonthValue, this.calendarValue.get(Calendar.MONTH));
         firePropertyChange(PROPERTY_DAY, oldDayValue, this.calendarValue.get(Calendar.DATE));
         firePropertyChange(PROPERTY_VALUE, oldValue, getValue());
-        firePropertyChange("selected", oldSelectedValue, this.selected);
+        firePropertyChange(PROPERTY_SELECTED_DAY, oldSelectedValue, this.selectedDay);
     }
     
     public void setDate(int year, int month, int day) {
@@ -205,17 +210,32 @@ public abstract class AbstractDateModel<T> implements DateModel<T> {
         firePropertyChange(PROPERTY_VALUE, oldValue, getValue());
     }
     
-    public boolean isSelected() {
-        return selected;
+    public boolean isSelectedDay(){
+    	return selectedDay;
     }
     
-    public void setSelected(boolean selected) {
+    public boolean isSelectedMonth(){
+    	return selectedMonth;
+    }
+    
+    public void setSelectedMonth(boolean selected){
+    	boolean oldValue = this.selectedMonth;
+    	this.selectedMonth = selected;
+    	firePropertyChange(PROPERTY_SELECTED_MONTH, oldValue, this.selectedMonth);
+    }
+    
+    public boolean isSelected() {
+    	// isSelectedDay() || isSelectedMonth()
+        return selectedDay || selectedMonth;
+    }
+    
+    public void setSelectedDay(boolean selected) {
         T oldValue = getValue();
-        boolean oldSelectedValue = isSelected();
-        this.selected = selected; 
+        boolean oldSelectedValue = selectedDay;
+        this.selectedDay = selected; 
         fireChangeEvent();
         firePropertyChange(PROPERTY_VALUE, oldValue, getValue());
-        firePropertyChange(PROPERTY_SELECTED, oldSelectedValue, this.selected);
+        firePropertyChange(PROPERTY_SELECTED_DAY, oldSelectedValue, this.selectedDay);
     }
 
     private void setToMidnight() {

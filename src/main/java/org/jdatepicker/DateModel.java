@@ -34,8 +34,10 @@ import javax.swing.event.ChangeListener;
 /**
  * Created 18 April 2010
  * Updated 26 April 2010
+ * Refactored 4 March 2015
  * 
  * @author Juan Heyns
+ * @author Jasonlhy
  *
  * @param <T> The type of this model (e.g. java.util.Date, java.util.Calendar)
  */
@@ -155,7 +157,7 @@ public interface DateModel<T> {
      * 
      * @param selected select this value?
      */
-    void setSelected(boolean selected);
+    void setSelectedDay(boolean selected);
     
     /**
      * Adds a PropertyChangeListener to the list of bean listeners.
@@ -178,5 +180,26 @@ public interface DateModel<T> {
      * @see #addPropertyChangeListener(PropertyChangeListener)
      */
     void removePropertyChangeListener(PropertyChangeListener listener);
+    
+    /**
+     * Checks if is selected day.
+     *
+     * @return true, if is selected day
+     */
+    boolean isSelectedDay();
+    
+    /**
+     * Checks if is selected month.
+     *
+     * @return true, if is selected month
+     */
+    boolean isSelectedMonth();
 
+    /**
+     * Sets the selected month.
+     *
+     * @param selected the new selected month
+     */
+    void setSelectedMonth(boolean selected);
+    
 }

@@ -27,12 +27,16 @@ or implied, of Juan Heyns.
 */
 package org.jdatepicker.impl;
 
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.text.DateFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -52,15 +56,19 @@ import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerModel;
+import javax.swing.SwingConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 
+import org.jdatepicker.AbstractDateModel;
 import org.jdatepicker.ComponentColorDefaults;
 import org.jdatepicker.ComponentIconDefaults;
 import org.jdatepicker.ComponentManager;
@@ -80,10 +88,13 @@ import org.jdatepicker.constraints.DateSelectionConstraint;
  * Updated 26 April 2010
  * Updated 15 June 2012
  * Updated 10 August 2012
+ * Updated 4 March 2015
+ * 
  * 
  * @author Juan Heyns
  * @author JC Oosthuizen
  * @author Yue Huang
+ * @author Jasonlhy
  */
 public class JDatePanelImpl extends JPanel implements JDatePanel {
 
@@ -101,12 +112,27 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
     private InternalCalendarModel internalModel;
     private InternalController internalController;
     private InternalView internalView;
+    
+    // switch between select the day or select the month name
+    private boolean monthMode;
 
     public JDatePanelImpl() {
         this(new DefaultComponentFactory().createModel());
     }
+    
+    public JDatePanelImpl(boolean monthMode){
+    	this(new DefaultComponentFactory().createModel(), monthMode);
+    }
 
     public JDatePanelImpl(DateModel<?> model) {
+    	this(model, false);
+    }
+    
+    public JDatePanelImpl(DateModel<?> model, boolean monthMode) {
+    	// this have to be set first
+    	// internal view uses this value to initialize the view
+    	this.monthMode = monthMode;
+    	
         actionListeners = new HashSet<ActionListener>();
         dateConstraints = new HashSet<DateSelectionConstraint>();
 
@@ -122,6 +148,14 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
         
         setLayout(new GridLayout(1, 1));
         add(internalView);
+        
+        
+        // for Month Mode only
+        // set default select the month, not select the day
+        if (monthMode){
+            internalModel.getModel().setSelectedDay(false);
+            internalModel.getModel().setSelectedMonth(true);
+        }
     }
     
     public void addActionListener(ActionListener actionListener) {
@@ -251,7 +285,8 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
         private JButton previousYearButton;
         private JButton nextYearButton;
         private JSpinner yearSpinner;
-        
+        private JLabel fullMonthLabel;
+        private JTable monthTable;
         /**
          * Update the scroll buttons UI.
          */
@@ -271,9 +306,11 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
          * Update the UI of the monthLabel
          */
         private void updateMonthLabel() {
-            SimpleDateFormat fmt = new SimpleDateFormat("MMMM");
-            Calendar cal = new GregorianCalendar(internalModel.getModel().getYear(), internalModel.getModel().getMonth(), internalModel.getModel().getDay());
-            monthLabel.setText(fmt.format(cal.getTime()));
+        	if (monthLabel != null){
+        		SimpleDateFormat fmt = new SimpleDateFormat("MMMM");
+                Calendar cal = new GregorianCalendar(internalModel.getModel().getYear(), internalModel.getModel().getMonth(), internalModel.getModel().getDay());
+                monthLabel.setText(fmt.format(cal.getTime()));
+        	}
         }
         
         public InternalView() {
@@ -289,8 +326,86 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
             this.setPreferredSize(new java.awt.Dimension(200, 180));
             this.setOpaque(false);
             this.add(getNorthPanel(), java.awt.BorderLayout.NORTH);
-            this.add(getSouthPanel(), java.awt.BorderLayout.SOUTH);
-            this.add(getCenterPanel(), java.awt.BorderLayout.CENTER);
+            
+            if (monthMode){
+            	this.add(getCenterMonthPanel(), java.awt.BorderLayout.CENTER);
+            } else {
+            	this.add(getSouthPanel(), java.awt.BorderLayout.SOUTH);
+                this.add(getCenterPanel(), java.awt.BorderLayout.CENTER);
+            }
+        }
+        
+        private JPanel getCenterMonthPanel(){
+        	JPanel centerMonthPanel = null;
+        	
+            if (centerMonthPanel == null) {
+            	centerMonthPanel = new javax.swing.JPanel();
+            	centerMonthPanel.setLayout(new java.awt.BorderLayout());
+            	centerMonthPanel.setOpaque(false);
+            	centerMonthPanel.add(getMonthTable(), java.awt.BorderLayout.CENTER);
+            }
+            
+            return centerMonthPanel;
+        }
+        
+        
+        private JTable getMonthTable(){
+        	Object [][] data = {{"Jan", "Feb", "Mar", "Apr"}, {"May", "June", "Jul", "Aug"}, {"Sep", "Oct", "Nov", "Dec"}};
+        	Object [] headingName = data[0]; // this is actually useless
+        	DefaultTableModel monthModel = new DefaultTableModel(data, headingName){
+        		 @Override
+        		   public boolean isCellEditable(int row, int column) {
+        		       return false;
+        		   }
+        	};
+            int defaultRow = internalModel.getModel().getMonth() / 4;
+            int defaultColumn = internalModel.getModel().getMonth() % 4;
+        	
+            if (monthTable == null) {
+            	DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer(){
+					@Override
+					public Component getTableCellRendererComponent(
+							JTable table, Object value, boolean isSelected,
+							boolean hasFocus, int row, int column) {
+						Component component = super
+								.getTableCellRendererComponent(table, value,
+										isSelected, hasFocus, row, column);
+						JLabel label = (JLabel) component; // by default it is a JLabel subclass
+						label.setHorizontalAlignment(SwingConstants.CENTER);
+						if (isSelected) {
+							component.setBackground(getColors().bgGridSelected());
+							component.setForeground(getColors().fgGridSelected());
+						} else {
+							component.setBackground(Color.WHITE);
+							component.setForeground(Color.BLACK);
+						}
+
+						return component;
+					}
+            	};
+            	
+            	
+                monthTable = new javax.swing.JTable();
+                monthTable.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+                monthTable.setRowHeight(50); 
+                monthTable.setPreferredSize(new java.awt.Dimension(100,80));
+                monthTable.setModel(monthModel);
+                monthTable.setShowGrid(true);
+                monthTable.setGridColor(getColors().bgGrid());
+                monthTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+                monthTable.setCellSelectionEnabled(true);
+                monthTable.setRowSelectionAllowed(true);
+                monthTable.changeSelection(defaultRow, defaultColumn, false, false);
+                monthTable.setFocusable(false);
+                monthTable.addMouseListener(internalController);
+                // center the text looks better
+                TableColumnModel columnModel = monthTable.getColumnModel();
+                for (int i = 0; i < columnModel.getColumnCount(); i++){
+                	columnModel.getColumn(i).setCellRenderer(centerRenderer);
+                }
+            }
+            
+            return monthTable;
         }
         
         /**
@@ -305,8 +420,10 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
                 northPanel.setName("");
                 northPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(3,3,3,3));
                 northPanel.setBackground(getColors().bgMonthSelector());
-                northPanel.add(getPreviousButtonPanel(), java.awt.BorderLayout.WEST);
-                northPanel.add(getNextButtonPanel(), java.awt.BorderLayout.EAST);
+                if (!monthMode){
+                	northPanel.add(getPreviousButtonPanel(), java.awt.BorderLayout.WEST);
+                    northPanel.add(getNextButtonPanel(), java.awt.BorderLayout.EAST);
+                }
                 northPanel.add(getNorthCenterPanel(), java.awt.BorderLayout.CENTER);
             }
             return northPanel;
@@ -323,7 +440,9 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
                 northCenterPanel.setLayout(new java.awt.BorderLayout());
                 northCenterPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(0,5,0,5));
                 northCenterPanel.setOpaque(false);
-                northCenterPanel.add(getMonthLabel(), java.awt.BorderLayout.CENTER);
+                if (!monthMode){
+                	northCenterPanel.add(getMonthLabel(), java.awt.BorderLayout.CENTER);
+                }
                 northCenterPanel.add(getYearSpinner(), java.awt.BorderLayout.EAST);
             }
             return northCenterPanel;
@@ -364,18 +483,87 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
          * @return javax.swing.JPanel    
          */    
         private JPanel getSouthPanel() {
-            if (southPanel == null) {
+            if (southPanel == null) {	
                 southPanel = new javax.swing.JPanel();
                 southPanel.setLayout(new java.awt.BorderLayout());
                 southPanel.setBackground(getColors().bgTodaySelector());
                 southPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(3,3,3,3));
                 southPanel.add(getTodayLabel(), java.awt.BorderLayout.WEST);
+                southPanel.add(getFullMonthLabel(), java.awt.BorderLayout.CENTER);
                 southPanel.add(getNoneLabel(), java.awt.BorderLayout.EAST);
             }
             return southPanel;
         }
 
-        /**
+        private Component getFullMonthLabel() {
+			if (fullMonthLabel == null){
+				fullMonthLabel = new JLabel("全月");
+				// fullMonthLabel = new JLabel("全月");
+				fullMonthLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+				fullMonthLabel.setOpaque(true);
+				
+				class PropertyListener implements PropertyChangeListener{
+					
+					public void propertyChange(PropertyChangeEvent evt) {
+						// System.out.println("property name: " + evt.getPropertyName());
+						
+						if (evt.getPropertyName().equals(AbstractDateModel.PROPERTY_SELECTED_DAY)){
+							// select the day, disselect the month
+							Boolean newValue = (Boolean) evt.getNewValue();
+							boolean isSelectedDay = newValue.booleanValue();
+							if (isSelectedDay){
+								fullMonthLabel.setBackground(Color.WHITE);
+								fullMonthLabel.setForeground(Color.BLACK);
+							}
+						} else if (evt.getPropertyName().equals(AbstractDateModel.PROPERTY_SELECTED_MONTH)){
+							Boolean newValue = (Boolean) evt.getNewValue();
+							boolean isSelectedMonth = newValue.booleanValue();
+							if (isSelectedMonth){
+								fullMonthLabel.setBackground(getColors().bgGridSelected());
+								fullMonthLabel.setForeground(getColors().fgGridSelected());
+							} else {
+								fullMonthLabel.setBackground(Color.WHITE);
+								fullMonthLabel.setForeground(Color.BLACK);
+							}
+						}
+					}	
+				}
+				internalModel.getModel().addPropertyChangeListener(new PropertyListener());
+				
+				
+				fullMonthLabel.addMouseListener(new MouseListener(){
+					
+					public void mouseClicked(MouseEvent e) {
+						internalModel.getModel().setSelectedDay(false);
+						internalModel.getModel().setSelectedMonth(true);
+					}
+
+					
+					public void mousePressed(MouseEvent e) {
+						
+					}
+
+					
+					public void mouseReleased(MouseEvent e) {
+
+					}
+
+					
+					public void mouseEntered(MouseEvent e) {
+						
+					}
+
+					
+					public void mouseExited(MouseEvent e) {
+						
+					}
+            	});
+			}
+			
+			return fullMonthLabel;
+		}
+
+		/**
          * This method initializes todayLabel    
          *     
          * @return javax.swing.JLabel    
@@ -698,7 +886,7 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
                         && todayCal.get(Calendar.YEAR) == internalModel.getModel().getYear()) {
                     label.setForeground(getColors().fgGridToday());
                     //Selected
-                    if (internalModel.getModel().isSelected() && selectedCal.get(Calendar.DATE) == cellDayValue) {
+                    if (internalModel.getModel().isSelectedDay() && selectedCal.get(Calendar.DATE) == cellDayValue) {
                         label.setForeground(getColors().fgGridTodaySelected());
                         label.setBackground(getColors().bgGridTodaySelected());
                     }
@@ -706,7 +894,7 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
                 //Other day
                 else {
                     //Selected
-                    if (internalModel.getModel().isSelected() && selectedCal.get(Calendar.DATE) == cellDayValue) {
+                    if (internalModel.getModel().isSelectedDay() && selectedCal.get(Calendar.DATE) == cellDayValue) {
                         label.setForeground(getColors().fgGridSelected());
                         label.setBackground(getColors().bgGridSelected());
                     }
@@ -783,7 +971,9 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
                         return;
                     }
 
-                    internalModel.getModel().setSelected(true);
+                    // System.out.println("Selected day in table...");
+                    internalModel.getModel().setSelectedDay(true);
+                    internalModel.getModel().setSelectedMonth(false);
                     
                     if (doubleClickAction && arg0.getClickCount() == 2) {
                         fireActionPerformed();
@@ -794,7 +984,8 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
                 }
             }
             else if (arg0.getSource() == internalView.getNoneLabel()) {
-                internalModel.getModel().setSelected(false);
+                internalModel.getModel().setSelectedDay(false);
+                internalModel.getModel().setSelectedMonth(false);
                 
                 if (doubleClickAction && arg0.getClickCount() == 2) {
                     fireActionPerformed();
@@ -802,6 +993,15 @@ public class JDatePanelImpl extends JPanel implements JDatePanel {
                 if (!doubleClickAction) {
                     fireActionPerformed();
                 }
+            } else if (arg0.getSource() == internalView.getMonthTable()){
+                int row = internalView.getMonthTable().getSelectedRow();
+                int col = internalView.getMonthTable().getSelectedColumn();
+                int month = row * 4 + col;
+            	// System.out.println("Clicking the monthtable..., month: " + month);
+            	internalModel.getModel().setMonth(month);
+            	
+            	internalModel.getModel().setSelectedDay(false);
+            	internalModel.getModel().setSelectedMonth(true);
             }
         }
         

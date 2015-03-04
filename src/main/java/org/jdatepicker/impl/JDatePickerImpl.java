@@ -71,10 +71,12 @@ import org.jdatepicker.constraints.DateSelectionConstraint;
  * Refactored 16 April 2010
  * Updated 26 April 2010
  * Updated 10 August 2012
+ * Updated 4 March 2015
  * 
  * @author Juan Heyns
  * @author JC Oosthuizen
  * @author Yue Huang
+ * @author Jasonlhy
  */
 public class JDatePickerImpl extends JPanel implements JDatePicker {
 
@@ -354,13 +356,13 @@ public class JDatePickerImpl extends JPanel implements JDatePicker {
                     return;
                 }
                 datePanel.getModel().setDate(value.get(Calendar.YEAR), value.get(Calendar.MONTH), value.get(Calendar.DATE));
-                datePanel.getModel().setSelected(true);
+                datePanel.getModel().setSelectedDay(true);
             }
 
             // Clearing textfield will also fire change event
             if (evt.getNewValue() == null) {
                 // Set model value unselected, this will fire an event
-                getModel().setSelected(false);
+                getModel().setSelectedDay(false);
             }
         }
 
